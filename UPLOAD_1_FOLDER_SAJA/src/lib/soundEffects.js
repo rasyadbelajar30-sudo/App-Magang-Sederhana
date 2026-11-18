@@ -52,6 +52,10 @@ function playTone(
     gainPeak = 0.12,
   }
 ) {
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+    if (ctx.state !== 'running') return;
+  }
   const now = ctx.currentTime + startTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -95,6 +99,10 @@ function playFilteredNoise(
     gainPeak = 0.09,
   }
 ) {
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+    if (ctx.state !== 'running') return;
+  }
   const now = ctx.currentTime + startTime;
   const source = ctx.createBufferSource();
   source.buffer = createNoiseBuffer(ctx, duration + 0.05);
@@ -871,13 +879,26 @@ export const sfx = {
     });
   },
 
+  // Helper: Explicit user gesture audio unlock
+  unlockAudio() {
+    try {
+      const ctx = getCtx();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    } catch (_e) {}
+  },
+
   // 35. Intro Splash: Cosmic Sub-Whoosh + 5-Note Crystal Startup Fanfare + Star Shimmer
   introSplash() {
     try {
       const ctx = getCtx();
       if (!ctx) return;
+      const startedAt = Date.now();
 
       const fireIntro = () => {
+        // Guard: Jika lebih dari 900ms sejak intro jalan, jangan mainkan suara pembuka terlambat!
+        if (Date.now() - startedAt > 900) return;
         lastGlobalSoundAt = Date.now();
         // Warm cosmic sub-bass swell
         playTone(ctx, {
@@ -934,20 +955,26 @@ export const sfx = {
         ctx
           .resume()
           .then(() => {
-            if (ctx.state === 'running') fireIntro();
+            if (ctx.state === 'running' && Date.now() - startedAt <= 900) fireIntro();
           })
           .catch(() => {});
 
         const unlockOnce = () => {
           window.removeEventListener('pointerdown', unlockOnce, true);
           window.removeEventListener('keydown', unlockOnce, true);
+          window.removeEventListener('touchstart', unlockOnce, true);
           ctx
             .resume()
-            .then(() => fireIntro())
+            .then(() => {
+              if (Date.now() - startedAt <= 900) {
+                fireIntro();
+              }
+            })
             .catch(() => {});
         };
         window.addEventListener('pointerdown', unlockOnce, { once: true, capture: true });
         window.addEventListener('keydown', unlockOnce, { once: true, capture: true });
+        window.addEventListener('touchstart', unlockOnce, { once: true, capture: true });
       }
     } catch (_e) {
       // ignore

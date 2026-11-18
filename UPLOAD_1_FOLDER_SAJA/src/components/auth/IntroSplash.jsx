@@ -325,6 +325,7 @@ export function IntroSplash({ onFinish }) {
 
   return (
     <div
+      onPointerDown={() => sfx.unlockAudio()}
       style={{
         background:
           'radial-gradient(circle at 50% 32%, #1E1B4B 0%, #0B1026 52%, #060914 100%)',

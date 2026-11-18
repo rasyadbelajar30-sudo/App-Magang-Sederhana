@@ -149,13 +149,16 @@ export default function App() {
   const [showIntro, setShowIntro] = useState(true);
 
   useEffect(() => {
+    const onGlobalPointerDown = () => sfx.unlockAudio();
     const onGlobalClick = (e) => sfx.handleGlobalInteraction(e);
     const onGlobalKeyDown = (e) => sfx.handleGlobalKeyDown(e);
     const onReplayIntro = () => setShowIntro(true);
+    document.addEventListener('pointerdown', onGlobalPointerDown, true);
     document.addEventListener('click', onGlobalClick, true);
     document.addEventListener('keydown', onGlobalKeyDown, true);
     window.addEventListener('mh-replay-intro', onReplayIntro);
     return () => {
+      document.removeEventListener('pointerdown', onGlobalPointerDown, true);
       document.removeEventListener('click', onGlobalClick, true);
       document.removeEventListener('keydown', onGlobalKeyDown, true);
       window.removeEventListener('mh-replay-intro', onReplayIntro);
