@@ -21,6 +21,132 @@ async function getUserDocsAndPractices(userId) {
   };
 }
 
+// POST /api/user/demo-guest (Buat akun demo tamu acak agar sesi penguji tidak saling tumpuk)
+router.post('/demo-guest', async (_req, res) => {
+  try {
+    const suffix = Math.random().toString(36).substring(2, 7);
+    const email = `guest_${suffix}@maganghub.id`;
+    const password = `demo_${suffix}_${Date.now().toString(36)}!`;
+
+    const guestNames = [
+      'Budi Santoso',
+      'Siti Nurhaliza',
+      'Ahmad Fauzi',
+      'Putri Ayu',
+      'Dwi Nugroho',
+      'Anisa Rahmawati',
+      'Fajar Pratama',
+      'Rina Kartika',
+      'Kevin Adiputra',
+      'Nadia Safitri',
+    ];
+    const pickedName =
+      guestNames[Math.floor(Math.random() * guestNames.length)] + ` (Demo ${suffix.toUpperCase()})`;
+
+    const studentTemplates = [
+      {
+        major: 'Teknik Informatika',
+        institution: 'Universitas Indonesia',
+        level: 'Mahasiswa',
+        grade: 'Semester 5',
+        gpa: 3.72,
+        skills: ['React', 'JavaScript', 'Tailwind CSS', 'Git', 'REST API'],
+      },
+      {
+        major: 'Sistem Informasi',
+        institution: 'Universitas Gadjah Mada',
+        level: 'Mahasiswa',
+        grade: 'Semester 5',
+        gpa: 3.65,
+        skills: ['Figma', 'UI/UX', 'Product Management', 'SQL'],
+      },
+      {
+        major: 'Rekayasa Perangkat Lunak',
+        institution: 'SMK Negeri 1 Jakarta',
+        level: 'SMK',
+        grade: 'Kelas XII',
+        gpa: 88.5,
+        skills: ['HTML', 'CSS', 'JavaScript', 'Figma', 'PHP'],
+      },
+      {
+        major: 'Teknik Komputer dan Jaringan',
+        institution: 'SMK Negeri 2 Bandung',
+        level: 'SMK',
+        grade: 'Kelas XII',
+        gpa: 86.0,
+        skills: ['Linux', 'Networking', 'Python', 'Mikrotik'],
+      },
+      {
+        major: 'Desain Komunikasi Visual',
+        institution: 'Institut Teknologi Bandung',
+        level: 'Mahasiswa',
+        grade: 'Semester 6',
+        gpa: 3.8,
+        skills: ['Figma', 'Illustrator', 'Photoshop', 'Canva', 'Motion Graphic'],
+      },
+    ];
+    const template = studentTemplates[Math.floor(Math.random() * studentTemplates.length)];
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: pickedName,
+        education_level: template.level,
+      },
+    });
+
+    if (authError || !authData?.user) {
+      console.error('[demo-guest auth error]', authError);
+      return res.status(500).json({
+        error: 'AUTH_FAILED',
+        message: authError?.message || 'Gagal membuat akun demo acak.',
+      });
+    }
+
+    const userId = authData.user.id;
+    const colors = ['#4F46E5', '#7C3AED', '#06B6D4', '#10B981', '#F59E0B', '#F43F5E'];
+    const avatarColor = colors[Math.floor(Math.random() * colors.length)];
+
+    // Seed profile demo yang terisi lengkap & siap tes
+    await supabaseAdmin.from('users').upsert({
+      id: userId,
+      full_name: pickedName,
+      email,
+      phone: '0812' + Math.floor(10000000 + Math.random() * 90000000),
+      avatar_color: avatarColor,
+      education_level: template.level,
+      institution_name: template.institution,
+      major: template.major,
+      grade_or_semester: template.grade,
+      gpa_or_score: template.gpa,
+      city: 'Jakarta',
+      bio: `Peserta demo MagangHub bidang ${template.major}. Siap berkontribusi dan belajar hal baru!`,
+      skills: template.skills,
+      portfolio_url: `https://github.com/guest-${suffix}`,
+      readiness_score: 55,
+      xp_points: 100,
+      xp_events: [
+        { label: 'Akun Demo Siap', points: 100, date: new Date().toISOString() },
+      ],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    return res.json({
+      success: true,
+      email,
+      password,
+      name: pickedName,
+      isRandomGuest: true,
+    });
+  } catch (err) {
+    console.error('[POST /api/user/demo-guest error]', err);
+    return res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+  }
+});
+
 // GET /api/user
 router.get('/', requireAuth, ensureProfile, async (req, res) => {
   try {

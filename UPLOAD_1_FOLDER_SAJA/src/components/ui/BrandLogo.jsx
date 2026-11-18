@@ -1,14 +1,20 @@
 import React, { useId } from 'react';
-import { motion } from 'framer-motion';
 
-const SIZES = { xs: 24, sm: 32, md: 40, lg: 56, xl: 112 };
+const SIZES = { xs: 24, sm: 32, md: 40, lg: 56, xl: 112, hero: 220 };
 
-export function LogoMark({ px = 40, idPrefix = 'mh' }) {
+export function LogoMark({ px = 40, idPrefix = 'mh', responsiveClass = '' }) {
   const g = `${idPrefix}-g`;
   const r = `${idPrefix}-r`;
   const glow = `${idPrefix}-glow`;
   return (
-    <svg width={px} height={px} viewBox="0 0 64 64" role="img" aria-label="MagangHub">
+    <svg
+      width={responsiveClass ? undefined : px}
+      height={responsiveClass ? undefined : px}
+      viewBox="0 0 64 64"
+      role="img"
+      aria-label="MagangHub"
+      className={responsiveClass}
+    >
       <defs>
         <linearGradient id={g} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#4F46E5" />
@@ -52,21 +58,25 @@ export function LogoMark({ px = 40, idPrefix = 'mh' }) {
   );
 }
 
-export function BrandLogo({ size = 'md', animated = false, showText = false, className = '' }) {
+export function BrandLogo({
+  size = 'md',
+  animated = false,
+  showText = false,
+  responsiveClass = '',
+  className = '',
+}) {
   const px = SIZES[size] || SIZES.md;
   const id = useId().replace(/:/g, '');
 
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <motion.span
-        className={`inline-flex shrink-0 drop-shadow-[0_6px_14px_rgba(79,70,229,0.35)] ${
+      <span
+        className={`inline-flex shrink-0 drop-shadow-[0_12px_28px_rgba(79,70,229,0.5)] ${
           animated ? 'animate-oyen-bob' : 'transition-transform hover:scale-105 hover:-rotate-3'
         }`}
-        animate={animated ? { y: [0, -6, 0], rotate: [0, -3, 3, 0] } : undefined}
-        transition={animated ? { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } : undefined}
       >
-        <LogoMark px={px} idPrefix={`mh${id}`} />
-      </motion.span>
+        <LogoMark px={px} idPrefix={`mh${id}`} responsiveClass={responsiveClass} />
+      </span>
       {showText && (
         <span className="font-display font-extrabold tracking-tight text-slate-900 dark:text-white text-lg">
           Magang<span className="text-brand-500 dark:text-cyan-400">Hub</span>

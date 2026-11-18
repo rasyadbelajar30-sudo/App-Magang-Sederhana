@@ -168,11 +168,9 @@ export default function App() {
         <AuthProvider>
           <AppProvider>
             <BrowserRouter>
-              <AnimatePresence>
-                {showIntro && (
-                  <IntroSplash onFinish={() => setShowIntro(false)} />
-                )}
-              </AnimatePresence>
+              {showIntro && (
+                <IntroSplash onFinish={() => setShowIntro(false)} />
+              )}
               <AuroraBackgroundCanvas />
               <AppRoutes />
             </BrowserRouter>

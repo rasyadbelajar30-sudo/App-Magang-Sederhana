@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { api } from '../api/client';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { spring } from '../lib/constants';
@@ -32,11 +33,6 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Setiap kali halaman Auth dipasang (misal setelah logout kembali ke /masuk), putar intro
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('mh-replay-intro'));
-  }, []);
-
   const switchMode = (targetPath) => {
     setErrorMsg('');
     navigate(targetPath);
@@ -49,17 +45,38 @@ export default function Auth() {
   if (password.length >= 10 && /[^a-zA-Z0-9]/.test(password)) passStrength += 1;
 
   const handleDemoFillAndLogin = async () => {
-    setEmail('demo@maganghub.id');
-    setPassword('demo12345');
     setErrorMsg('');
     setLoading(true);
     try {
-      await signIn({ email: 'demo@maganghub.id', password: 'demo12345' });
+      // Buat akun demo unik / acak baru agar tiap penguji memiliki sandbox terpisah
+      let targetEmail = 'demo@maganghub.id';
+      let targetPassword = 'demo12345';
+      let targetName = 'Rizky Pratama';
+      let isRandom = false;
+
+      try {
+        const guestRes = await api.post('/user/demo-guest', {});
+        if (guestRes && guestRes.email && guestRes.password) {
+          targetEmail = guestRes.email;
+          targetPassword = guestRes.password;
+          targetName = guestRes.name || 'Penguji Demo';
+          isRandom = true;
+        }
+      } catch (guestErr) {
+        console.warn('[Demo Guest API fallback to default demo]', guestErr);
+      }
+
+      setEmail(targetEmail);
+      setPassword(targetPassword);
+
+      await signIn({ email: targetEmail, password: targetPassword });
       window.dispatchEvent(new CustomEvent('mh-replay-intro'));
       toast({
         type: 'success',
-        title: 'Selamat datang kembali, Rizky! 👋',
-        desc: 'Akun demo berhasil masuk.',
+        title: `Selamat datang, ${targetName}! 👋`,
+        desc: isRandom
+          ? 'Akun demo acak khusus untuk sesimu siap! Data lamaran tidak akan bercampur dengan penguji lain.'
+          : 'Akun demo berhasil masuk.',
       });
       navigate('/');
     } catch (err) {
@@ -422,10 +439,10 @@ export default function Auth() {
                     size="md"
                     disabled={loading}
                     onClick={handleDemoFillAndLogin}
-                    className="w-full"
+                    className="w-full flex items-center justify-center gap-2"
                   >
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    <span>Coba Akun Demo (demo@maganghub.id)</span>
+                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                    <span>Coba Akun Demo Acak (Random Guest) 🎲</span>
                   </Button>
                 )}
               </motion.form>
