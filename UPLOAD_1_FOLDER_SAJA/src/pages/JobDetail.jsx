@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   MapPin,
@@ -12,15 +12,24 @@ import {
   Send,
   Calendar,
   Building2,
+  X,
 } from 'lucide-react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { SkillMatchBreakdown } from '../components/jobs/SkillMatchBreakdown';
 import { ApplyModal } from '../components/jobs/ApplyModal';
+import { MapButton } from '../components/jobs/MapButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DOC_META, STATUS_META, stagger, item } from '../lib/constants';
 import { formatDateID, formatRupiah, getInitials } from '../lib/format';
+import {
+  getCompanyAddressQuery,
+  getGoogleMapsEmbedUrl,
+  getJobAddressLabel,
+} from '../lib/location';
+import { getRealInternshipStandard } from '../lib/realInternshipStandards';
+import { sfx } from '../lib/soundEffects';
 import { api } from '../api/client';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
@@ -34,6 +43,7 @@ export default function JobDetail() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [applyOpen, setApplyOpen] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     setLoading(true);
@@ -87,6 +97,7 @@ export default function JobDetail() {
   }
 
   const themeColor = job.company_theme_color || '#4F46E5';
+  const realStd = getRealInternshipStandard(job);
 
   return (
     <PageTransition className="space-y-6 pb-12">
@@ -142,6 +153,25 @@ export default function JobDetail() {
                   <Calendar className="w-4 h-4" /> Mulai: {formatDateID(job.start_date)}
                 </span>
               </div>
+
+              {/* 1-Click Direct Address Lookup & Interactive Map Toggle */}
+              <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/25 text-white/90 text-xs font-semibold">
+                  <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>{getJobAddressLabel(job)}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.openMap();
+                    setShowMap((v) => !v);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold shadow transition-colors"
+                >
+                  <span>📍 {showMap ? 'Tutup Peta Lokasi' : 'Lihat Peta Lokasi'}</span>
+                </button>
+                <MapButton job={job} variant="hero" />
+              </div>
             </div>
           </div>
 
@@ -168,6 +198,47 @@ export default function JobDetail() {
         </div>
       </div>
 
+      {/* Expandable 1-Click Interactive Embedded Google Map */}
+      <AnimatePresence>
+        {showMap && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="rounded-3xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xl space-y-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
+                <p className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                  {getCompanyAddressQuery(job)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapButton job={job} variant="chip" label="Buka Rute di Google Maps ↗" />
+                <button
+                  type="button"
+                  onClick={() => setShowMap(false)}
+                  className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500"
+                  aria-label="Tutup peta lokasi"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={getGoogleMapsEmbedUrl(job)}
+              title={`Peta lokasi ${job.company_name}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="w-full h-[260px] sm:h-[360px] rounded-2xl border border-slate-200 dark:border-slate-700"
+              allowFullScreen
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content 2 Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Description, Responsibilities, Mentor */}
@@ -179,10 +250,26 @@ export default function JobDetail() {
             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               {job.description}
             </p>
-            <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300">
-              <Building2 className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
-              <div>
-                <strong>Lokasi Kantor / Training Center:</strong> {job.company_address}
+            <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                <Building2 className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Lokasi Kantor / Training Center:</strong>{' '}
+                  {job.company_address || getCompanyAddressQuery(job)}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.openMap();
+                    setShowMap((v) => !v);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-brand-500/15 text-brand-600 dark:text-cyan-300 hover:bg-brand-500/25 transition-colors"
+                >
+                  📍 {showMap ? 'Sembunyikan Peta' : 'Lihat Peta'}
+                </button>
+                <MapButton job={job} variant="chip" label="Cari Alamat" />
               </div>
             </div>
           </GlassCard>
@@ -203,6 +290,67 @@ export default function JobDetail() {
               ))}
             </ul>
           </GlassCard>
+
+          {/* Kualifikasi & Standar Requirement Magang Asli di Perusahaan */}
+          {realStd && (
+            <GlassCard className="p-6 space-y-4 border-emerald-500/30 dark:border-emerald-400/25">
+              <div>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  ✅ Standar Kualifikasi Industri Nyata
+                </span>
+                <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white mt-0.5">
+                  Persyaratan &amp; Standar Magang Asli di {job.company_name}
+                </h3>
+              </div>
+
+              <div className="space-y-3 text-xs sm:text-sm">
+                <div className="p-3.5 rounded-2xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/10">
+                  <p className="font-extrabold text-slate-900 dark:text-white mb-1">
+                    🎓 Kriteria Akademik &amp; Jurusan:
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {realStd.academic}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/10">
+                  <p className="font-extrabold text-slate-900 dark:text-white mb-1.5">
+                    🛠️ Tools &amp; Kompetensi Teknis yang Dibutuhkan di Magang Asli:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {realStd.tools_and_tech.map((t) => (
+                      <span
+                        key={t}
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/10">
+                  <p className="font-extrabold text-slate-900 dark:text-white mb-1">
+                    📂 Standar Portofolio / Bukti Proyek yang Dicari HRD:
+                  </p>
+                  <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1 leading-relaxed">
+                    {realStd.portfolio_must_have.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/25">
+                  <p className="font-extrabold text-brand-700 dark:text-cyan-300 mb-1">
+                    🧭 Tahapan Seleksi Asli di {job.company_name}:
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {realStd.real_selection_flow}
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          )}
 
           {/* Gambaran & Sistem Magang ("Magang di Sini Gimana Sih?") */}
           <GlassCard className="p-6 space-y-4 border-brand-500/30 dark:border-cyan-400/25">

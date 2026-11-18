@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -21,10 +21,13 @@ import { DOC_META } from '../../lib/constants';
 import { ProgressRing } from '../ui/ProgressRing';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Button } from '../ui/Button';
+import { MapButton } from './MapButton';
+import { getCompanyAddressQuery, getGoogleMapsEmbedUrl, getJobAddressLabel } from '../../lib/location';
 import { sfx } from '../../lib/soundEffects';
 
 export function JobPreviewPane({ job, isSaved = false, onToggleSave }) {
   const navigate = useNavigate();
+  const [showMap, setShowMap] = useState(false);
 
   if (!job) return null;
 
@@ -88,10 +91,23 @@ export function JobPreviewPane({ job, isSaved = false, onToggleSave }) {
                 <h3 className="text-lg font-display font-extrabold text-slate-900 dark:text-white leading-snug mt-0.5">
                   {job.role_title}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                  <span className="truncate">{job.company_address || job.city}</span>
-                </p>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span className="truncate">{job.company_address || getJobAddressLabel(job)}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx.openMap();
+                      setShowMap((v) => !v);
+                    }}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-brand-500/15 text-brand-600 dark:text-cyan-300 hover:bg-brand-500/25"
+                  >
+                    📍 {showMap ? 'Tutup Peta' : 'Lihat Peta'}
+                  </button>
+                  <MapButton job={job} variant="chip" label="Cari Alamat" />
+                </div>
               </div>
             </div>
 
@@ -133,6 +149,22 @@ export function JobPreviewPane({ job, isSaved = false, onToggleSave }) {
               <ArrowUpRight className="w-4 h-4" />
             </Button>
           </div>
+
+          {showMap && (
+            <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-2.5 space-y-2">
+              <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">
+                📍 {getCompanyAddressQuery(job)}
+              </p>
+              <iframe
+                src={getGoogleMapsEmbedUrl(job)}
+                title={`Peta lokasi ${job.company_name}`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-[210px] rounded-xl border-0"
+                allowFullScreen
+              />
+            </div>
+          )}
 
           {/* Key Highlights Grid (Gaji, Sistem Kerja, Durasi, Kuota) */}
           <div className="grid grid-cols-2 gap-2.5">

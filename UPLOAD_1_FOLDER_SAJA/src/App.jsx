@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Rocket, RefreshCw } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { RefreshCw } from 'lucide-react';
 import { sfx } from './lib/soundEffects';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -10,6 +11,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { MobileNav } from './components/layout/MobileNav';
 import { PetCatCompanion } from './components/ai/PetCatCompanion';
+import { BrandLogo } from './components/ui/BrandLogo';
+import { IntroSplash } from './components/auth/IntroSplash';
 
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
@@ -84,9 +87,7 @@ function ProtectedShell() {
   if (loading) {
     return (
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="w-16 h-16 rounded-3xl bg-brand-gradient flex items-center justify-center shadow-2xl animate-pulse-ring">
-          <Rocket className="w-8 h-8 text-white" />
-        </div>
+        <BrandLogo size="lg" animated />
         <p className="text-sm font-display font-bold text-slate-700 dark:text-slate-200">
           Memuat MagangHub...
         </p>
@@ -145,14 +146,19 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [showIntro, setShowIntro] = useState(true);
+
   useEffect(() => {
     const onGlobalClick = (e) => sfx.handleGlobalInteraction(e);
     const onGlobalKeyDown = (e) => sfx.handleGlobalKeyDown(e);
+    const onReplayIntro = () => setShowIntro(true);
     document.addEventListener('click', onGlobalClick, true);
     document.addEventListener('keydown', onGlobalKeyDown, true);
+    window.addEventListener('mh-replay-intro', onReplayIntro);
     return () => {
       document.removeEventListener('click', onGlobalClick, true);
       document.removeEventListener('keydown', onGlobalKeyDown, true);
+      window.removeEventListener('mh-replay-intro', onReplayIntro);
     };
   }, []);
 
@@ -162,6 +168,11 @@ export default function App() {
         <AuthProvider>
           <AppProvider>
             <BrowserRouter>
+              <AnimatePresence>
+                {showIntro && (
+                  <IntroSplash onFinish={() => setShowIntro(false)} />
+                )}
+              </AnimatePresence>
               <AuroraBackgroundCanvas />
               <AppRoutes />
             </BrowserRouter>

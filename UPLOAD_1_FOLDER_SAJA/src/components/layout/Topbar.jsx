@@ -21,6 +21,8 @@ import { sfx } from '../../lib/soundEffects';
 import { buildJobStreetTypingPrompts, getSmartSuggestions } from '../../lib/smartSearch';
 import { formatRupiah } from '../../lib/format';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
+import { BrandLogo } from '../ui/BrandLogo';
+import { MapButton } from '../jobs/MapButton';
 
 const PAGE_TITLES = {
   '/': 'Dashboard Kesiapan Magang',
@@ -48,6 +50,23 @@ export function Topbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [cachedJobs, setCachedJobs] = useState([]);
   const [soundOn, setSoundOn] = useState(() => sfx.isEnabled());
+  const [oyenOn, setOyenOn] = useState(() => {
+    try {
+      return localStorage.getItem('mh-oyen-active') !== 'false';
+    } catch (_e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const onOyenState = (e) => {
+      if (typeof e?.detail?.active === 'boolean') {
+        setOyenOn(e.detail.active);
+      }
+    };
+    window.addEventListener('mh-oyen-state', onOyenState);
+    return () => window.removeEventListener('mh-oyen-state', onOyenState);
+  }, []);
 
   // JobStreet-style Typewriter State for Topbar Search
   const typingPrompts = useMemo(() => buildJobStreetTypingPrompts(cachedJobs), [cachedJobs]);
@@ -204,38 +223,51 @@ export function Topbar() {
     setSoundOn(next);
   };
 
+  const handleOyenToggle = () => {
+    const next = !oyenOn;
+    setOyenOn(next);
+    window.dispatchEvent(
+      new CustomEvent('mh-toggle-oyen', { detail: { active: next } })
+    );
+  };
+
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-[#0F1629] border-b border-slate-200/90 dark:border-slate-800/90 px-4 sm:px-6 py-3 mb-3 shadow-sm">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        <div className="min-w-0 shrink-0">
-          <h1 className="text-base sm:text-xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-            {pageTitle}
-          </h1>
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            <button
-              type="button"
-              onClick={handleQuickModeToggle}
-              title="Klik untuk ganti cepat mode SMK / Mahasiswa"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 font-bold text-brand-600 dark:text-cyan-400 transition-colors"
-            >
-              {user?.education_level === 'SMK' ? (
+    <header className="sticky top-0 z-30 bg-white dark:bg-[#0F1629] border-b border-slate-200/90 dark:border-slate-800/90 px-3.5 sm:px-6 py-2.5 sm:py-3 mb-3 shadow-sm">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="lg:hidden shrink-0">
+            <BrandLogo size="sm" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+              {pageTitle}
+            </h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <button
+                type="button"
+                onClick={handleQuickModeToggle}
+                title="Klik untuk ganti cepat mode SMK / Mahasiswa"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 font-bold text-brand-600 dark:text-cyan-400 transition-colors shrink-0"
+              >
+                {user?.education_level === 'SMK' ? (
+                  <>
+                    <Wrench className="w-3 h-3" /> Mode Siswa SMK
+                  </>
+                ) : (
+                  <>
+                    <GraduationCap className="w-3 h-3" /> Mode Mahasiswa
+                  </>
+                )}
+              </button>
+              {user?.institution_name && (
                 <>
-                  <Wrench className="w-3 h-3" /> Mode Siswa SMK
-                </>
-              ) : (
-                <>
-                  <GraduationCap className="w-3 h-3" /> Mode Mahasiswa
+                  <span className="hidden xs:inline">&bull;</span>
+                  <span className="hidden xs:inline truncate max-w-[110px] sm:max-w-[220px] font-medium text-slate-600 dark:text-slate-300">
+                    {user.institution_name}
+                  </span>
                 </>
               )}
-            </button>
-            {user?.institution_name && (
-              <>
-                <span>&bull;</span>
-                <span className="truncate max-w-[140px] sm:max-w-[220px] font-medium text-slate-600 dark:text-slate-300">
-                  {user.institution_name}
-                </span>
-              </>
-            )}
+            </div>
           </div>
         </div>
 
@@ -377,11 +409,18 @@ export function Topbar() {
                         </p>
                         <div className="space-y-1.5">
                           {suggestions.jobs.map((job) => (
-                            <button
+                            <div
                               key={job.id}
-                              type="button"
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSelectJob(job)}
-                              className="w-full text-left flex items-center justify-between gap-2.5 p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors group overflow-hidden"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleSelectJob(job);
+                                }
+                              }}
+                              className="w-full text-left flex items-center justify-between gap-2.5 p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors group overflow-hidden cursor-pointer"
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 <span className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-base shrink-0">
@@ -399,8 +438,11 @@ export function Topbar() {
                                   </p>
                                 </div>
                               </div>
-                              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-brand-500 shrink-0" />
-                            </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <MapButton job={job} variant="mini" />
+                                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-brand-500 shrink-0" />
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -456,6 +498,25 @@ export function Topbar() {
             }`}
           >
             {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+
+          {/* Si Oyen 3D Companion Quick Toggle (ON / OFF) */}
+          <button
+            type="button"
+            onClick={handleOyenToggle}
+            aria-label={oyenOn ? 'Sembunyikan Si Oyen' : 'Aktifkan Si Oyen'}
+            title={
+              oyenOn
+                ? 'Si Oyen 3D: AKTIF (Klik untuk Sembunyikan)'
+                : 'Si Oyen 3D: TERSEMBUNYI (Klik untuk Aktifkan)'
+            }
+            className={`p-2 rounded-xl border transition-colors shrink-0 text-sm leading-none ${
+              oyenOn
+                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/35 hover:bg-amber-500/25'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 opacity-60'
+            }`}
+          >
+            <span>🐱</span>
           </button>
 
           {/* Theme Toggle */}

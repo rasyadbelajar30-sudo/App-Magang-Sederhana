@@ -12,6 +12,7 @@ export function IdCard3D({
   internship,
   internId,
   period,
+  hidePrintSheet = false,
   onPrintIdCard,
   onPrintLoa,
 }) {
@@ -198,7 +199,7 @@ export function IdCard3D({
       </motion.div>
 
       {/* Print Actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 no-print">
         <Button variant="secondary" size="sm" onClick={onPrintIdCard}>
           <Printer className="w-4 h-4" />
           <span>Cetak ID Card</span>
@@ -208,6 +209,92 @@ export function IdCard3D({
           <span>Cetak Surat LoA</span>
         </Button>
       </div>
+
+      {/* Dedicated Printable ID Card Sheet (Front + Back QR) when printing ID Card */}
+      {!hidePrintSheet && (
+      <div className="hidden print:block print-area">
+        <div className="max-w-xl mx-auto space-y-6 p-6 border-2 border-dashed border-slate-300 rounded-3xl bg-white text-slate-900">
+          <div className="text-center border-b border-slate-200 pb-3">
+            <h2 className="text-lg font-extrabold uppercase tracking-wide">
+              KARTU TANDA PESERTA MAGANG RESMI (ID CARD)
+            </h2>
+            <p className="text-xs text-slate-500">
+              Gunting mengikuti garis putus-putus &bull; Tunjukkan QR Code saat presensi
+            </p>
+          </div>
+
+          {/* Front Side Print */}
+          <div
+            className="rounded-2xl p-6 text-white flex flex-col justify-between min-h-[210px]"
+            style={{ backgroundColor: '#0F172A' }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+                  style={{ backgroundColor: themeColor }}
+                >
+                  {internship?.company_logo || '🏢'}
+                </span>
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-wider">
+                    {internship?.company_name}
+                  </p>
+                  <p className="text-[10px] text-slate-300">OFFICIAL INTERNSHIP PASS (DEPAN)</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500 text-white">
+                AKTIF
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4 my-4">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-extrabold text-white border-2 border-white/40 shrink-0"
+                style={{ backgroundColor: user?.avatar_color || themeColor }}
+              >
+                {getInitials(user?.full_name)}
+              </div>
+              <div>
+                <h4 className="text-lg font-extrabold text-white">{user?.full_name}</h4>
+                <p className="text-xs font-bold text-cyan-300">{internship?.role_title}</p>
+                <p className="text-[11px] text-slate-300">
+                  {user?.institution_name || 'Institusi Pendidikan'} &bull; {user?.major || '-'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-300 pt-2 border-t border-white/20">
+              <span>
+                ID: <strong>{internId}</strong>
+              </span>
+              <span>
+                Mode: <strong>{internship?.work_type} ({internship?.city})</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* Back Side Print with QR */}
+          <div className="rounded-2xl p-6 bg-slate-900 text-white flex items-center justify-between gap-4 min-h-[180px]">
+            <div className="space-y-1.5 text-xs">
+              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-500/25 text-cyan-300">
+                VERIFIKASI PESERTA (BELAKANG)
+              </span>
+              <p className="text-sm font-extrabold">{internId}</p>
+              <p className="text-[11px] text-slate-300">
+                Mentor: <strong>{internship?.mentor_name}</strong> ({internship?.mentor_role})
+              </p>
+              <p className="text-[11px] text-slate-300">
+                Masa Berlaku: <strong>{formatDateID(period?.start)} s.d. {formatDateID(period?.end)}</strong>
+              </p>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl shrink-0">
+              <QRCodeSVG value={qrValue} size={92} level="M" />
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
     </div>
   );
 }

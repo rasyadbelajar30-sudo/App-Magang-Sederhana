@@ -16,7 +16,10 @@ import {
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { sfx } from '../../lib/soundEffects';
+import { getGoogleMapsSearchUrl } from '../../lib/location';
 import { useApp } from '../../context/AppContext';
+
+const OYEN_STORAGE_KEY = 'mh-oyen-active';
 
 const PAGE_REACTIONS = {
   '/': 'Meow~ 🐾 Selamat datang di Dashboard! Si Oyen siap ikut kamu naik-turun layar & pilihkan lowongan terbaik!',
@@ -75,8 +78,19 @@ export function PetCatCompanion() {
   });
 
   // UI & 3D Interactive Pet states
+  const isTouch =
+    typeof window !== 'undefined' &&
+    Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+  const [oyenActive, setOyenActive] = useState(() => {
+    try {
+      return localStorage.getItem(OYEN_STORAGE_KEY) !== 'false';
+    } catch (_e) {
+      return true;
+    }
+  });
   const [isBlinking, setIsBlinking] = useState(false);
-  const [followCursor, setFollowCursor] = useState(true);
+  const [followCursor, setFollowCursor] = useState(() => !isTouch);
   const [isPurring, setIsPurring] = useState(false);
   const [isJumping, setIsJumping] = useState(false);
   const [feedingFish, setFeedingFish] = useState(false);
@@ -87,6 +101,31 @@ export function PetCatCompanion() {
   );
   const [showBubble, setShowBubble] = useState(true);
   const [showTools, setShowTools] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(OYEN_STORAGE_KEY, String(oyenActive));
+    } catch (_e) {
+      // ignore
+    }
+    window.dispatchEvent(
+      new CustomEvent('mh-oyen-state', { detail: { active: oyenActive } })
+    );
+  }, [oyenActive]);
+
+  useEffect(() => {
+    const onToggle = (e) => {
+      setOyenActive((prev) => {
+        const next =
+          typeof e?.detail?.active === 'boolean' ? e.detail.active : !prev;
+        if (next) sfx.oyenShow();
+        else sfx.oyenHide();
+        return next;
+      });
+    };
+    window.addEventListener('mh-toggle-oyen', onToggle);
+    return () => window.removeEventListener('mh-toggle-oyen', onToggle);
+  }, []);
 
   const currentAccessory = ACCESSORIES[accessoryIdx]?.id || 'crown';
 
@@ -131,10 +170,22 @@ export function PetCatCompanion() {
     return jobsIndex.filter((j) => j.role_title && n.includes(norm(j.role_title))).slice(0, 3);
   };
 
-  const mapsUrl = (job) =>
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      `${job.company_name || ''} ${job.city || ''}`.trim()
-    )}`;
+  const mapsUrl = (job) => getGoogleMapsSearchUrl(job);
+
+  const hideOyen = (e) => {
+    if (e) e.stopPropagation();
+    sfx.oyenHide();
+    setChatOpen(false);
+    setShowTools(false);
+    setOyenActive(false);
+  };
+
+  const showOyen = () => {
+    sfx.oyenShow();
+    setOyenActive(true);
+    setIsJumping(true);
+    setTimeout(() => setIsJumping(false), 650);
+  };
 
   const goToJob = (job) => {
     sfx.cardSelect();
@@ -175,6 +226,7 @@ export function PetCatCompanion() {
 
   // 3. Event-Driven 2D Following (X & Y Naik-Turun) + 3D Head Perspective Tracking (Zero idle RAF loop!)
   useEffect(() => {
+    if (!oyenActive) return undefined;
     let rafPending = false;
     let lastMouseX = window.innerWidth - 120;
     let lastMouseY = window.innerHeight - 120;
@@ -185,12 +237,13 @@ export function PetCatCompanion() {
       rafPending = false;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
+      const isSmallScreen = vw < 640;
 
-      const dockX = vw - 105;
-      const dockY = vh - 105;
+      const dockX = vw - (isSmallScreen ? 76 : 105);
+      const dockY = vh - (isSmallScreen ? 138 : 105);
 
-      const catCenterX = dockX + smoothX.get() + 48;
-      const catCenterY = dockY + smoothY.get() + 48;
+      const catCenterX = dockX + smoothX.get() + (isSmallScreen ? 32 : 48);
+      const catCenterY = dockY + smoothY.get() + (isSmallScreen ? 32 : 48);
 
       const dx = lastMouseX - catCenterX;
       const dy = lastMouseY - catCenterY;
@@ -214,14 +267,16 @@ export function PetCatCompanion() {
       }
 
       if (followCursor && !chatOpen) {
-        const desiredScreenX = Math.min(vw - 75, Math.max(290, lastMouseX + 85));
+        const minX = isSmallScreen ? 75 : 290;
+        const maxLeftOffset = isSmallScreen ? vw - 90 : vw - 340;
+        const desiredScreenX = Math.min(vw - 75, Math.max(minX, lastMouseX + 85));
         const desiredScreenY = Math.min(vh - 75, Math.max(110, lastMouseY + 55));
 
         const nextOffsetX = desiredScreenX - dockX;
         const nextOffsetY = desiredScreenY - dockY;
 
-        targetX.set(Math.min(20, Math.max(-(vw - 340), nextOffsetX)));
-        targetY.set(Math.min(20, Math.max(-(vh - 180), nextOffsetY)));
+        targetX.set(Math.min(16, Math.max(-maxLeftOffset, nextOffsetX)));
+        targetY.set(Math.min(16, Math.max(-(vh - 180), nextOffsetY)));
 
         walkPhase += 0.45;
         const leftLift = Math.sin(walkPhase) * 4.5;
@@ -256,7 +311,7 @@ export function PetCatCompanion() {
       if (walkStopTimer) clearTimeout(walkStopTimer);
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [followCursor, chatOpen, targetX, targetY, smoothX, smoothY]);
+  }, [oyenActive, followCursor, chatOpen, targetX, targetY, smoothX, smoothY]);
 
   // Return smoothly to dock when chat opens
   useEffect(() => {
@@ -524,7 +579,37 @@ export function PetCatCompanion() {
   };
 
   return (
-    <div className="fixed bottom-20 lg:bottom-4 right-4 sm:right-6 z-50 pointer-events-none select-none">
+    <div className="fixed bottom-[74px] lg:bottom-4 right-3 sm:right-6 z-50 pointer-events-none select-none">
+      <AnimatePresence mode="wait">
+        {!oyenActive ? (
+          <motion.button
+            key="oyen-launcher"
+            type="button"
+            onClick={showOyen}
+            initial={{ opacity: 0, scale: 0.75, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.75, y: 12 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+            title="Klik untuk mengaktifkan kembali Si Oyen 3D (Oyen.AI)"
+            aria-label="Aktifkan Si Oyen"
+            className="pointer-events-auto relative flex items-center gap-1.5 px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white text-[11px] sm:text-xs font-extrabold shadow-lg hover:scale-105 active:scale-95 transition-transform"
+          >
+            <span
+              className="absolute inset-0 rounded-full animate-ping bg-amber-400/25 pointer-events-none"
+              aria-hidden="true"
+            />
+            <span className="relative text-sm">🐱</span>
+            <span className="relative">Aktifkan Oyen.AI</span>
+          </motion.button>
+        ) : (
+          <motion.div
+            key="oyen-active"
+            initial={{ opacity: 0, scale: 0.7, y: 18 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.7, y: 18 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+            className="flex flex-col items-end"
+          >
       {/* Oyen.AI Chat Window Drawer */}
       <AnimatePresence>
         {chatOpen && (
@@ -533,7 +618,7 @@ export function PetCatCompanion() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="pointer-events-auto mb-3 w-[calc(100vw-2rem)] sm:w-[400px] max-h-[540px] flex flex-col rounded-3xl border border-slate-200 dark:border-slate-700/80 shadow-[0_24px_60px_rgba(15,23,42,0.35)] overflow-hidden bg-white dark:bg-[#111827]"
+            className="pointer-events-auto mb-2.5 sm:mb-3 w-[calc(100vw-1.5rem)] sm:w-[400px] max-h-[72vh] sm:max-h-[540px] flex flex-col rounded-3xl border border-slate-200 dark:border-slate-700/80 shadow-[0_24px_60px_rgba(15,23,42,0.35)] overflow-hidden bg-white dark:bg-[#111827]"
           >
             {/* Header */}
             <div className="px-4 py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white flex items-center justify-between gap-2">
@@ -579,7 +664,7 @@ export function PetCatCompanion() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[310px] text-xs bg-slate-50/60 dark:bg-[#0B0F1E]/60">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3 max-h-[45vh] sm:max-h-[310px] text-xs bg-slate-50/60 dark:bg-[#0B0F1E]/60">
               {messages.map((m) => (
                 <div
                   key={m.id}
@@ -651,7 +736,7 @@ export function PetCatCompanion() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Tanya Si Oyen apa saja (lowongan, CV, studi kasus)..."
-                className="flex-1 text-xs rounded-xl px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                className="flex-1 text-base sm:text-xs rounded-xl px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
               <button
                 type="submit"
@@ -712,7 +797,7 @@ export function PetCatCompanion() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.94 }}
               transition={{ duration: 0.18 }}
-              className="mb-2 max-w-[275px] p-3 rounded-2xl rounded-br-none bg-white dark:bg-[#161F33] border border-amber-500/40 dark:border-amber-400/35 shadow-xl text-xs text-slate-700 dark:text-slate-200 relative"
+              className="mb-1.5 sm:mb-2 max-w-[205px] sm:max-w-[275px] p-2.5 sm:p-3 rounded-2xl rounded-br-none bg-white dark:bg-[#161F33] border border-amber-500/40 dark:border-amber-400/35 shadow-xl text-[11px] sm:text-xs text-slate-700 dark:text-slate-200 relative"
             >
               <button
                 type="button"
@@ -761,9 +846,9 @@ export function PetCatCompanion() {
         </AnimatePresence>
 
         {/* Cat Controls + 3D Claymorphism Ginger Tabby Cat */}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-1.5 sm:gap-2">
           {/* Interactive 3D Action & Dress-Up Pills */}
-          <div className="flex flex-col items-end gap-1.5 mb-2">
+          <div className="flex flex-col items-end gap-1 sm:gap-1.5 mb-1 sm:mb-2">
             <AnimatePresence>
             {showTools && (
             <motion.div
@@ -771,14 +856,14 @@ export function PetCatCompanion() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 12, scale: 0.9 }}
               transition={{ duration: 0.18 }}
-              className="flex items-center gap-1 p-1 rounded-full bg-white/95 dark:bg-[#0F172A]/95 border border-slate-200 dark:border-slate-700 shadow-lg"
+              className="flex flex-wrap justify-end items-center gap-1 p-1 max-w-[235px] sm:max-w-none rounded-2xl sm:rounded-full bg-white/95 dark:bg-[#0F172A]/95 border border-slate-200 dark:border-slate-700 shadow-lg"
             >
               {/* 3D Outfit / Accessory Switcher */}
               <button
                 type="button"
                 onClick={handleCycleAccessory}
                 title="Ganti Aksesoris 3D Si Oyen (Mahkota / Kacamata / Headset)"
-                className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 transition-all flex items-center gap-1 whitespace-nowrap"
+                className="min-h-[30px] sm:min-h-0 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 transition-all flex items-center gap-1 whitespace-nowrap"
               >
                 <Crown className="w-3 h-3 text-amber-500" />
                 <span>{ACCESSORIES[accessoryIdx]?.label.replace(/^\S+\s/, '')}</span>
@@ -789,7 +874,7 @@ export function PetCatCompanion() {
                 type="button"
                 onClick={handleFeedFish}
                 title="Kasih makan ikan ke Si Oyen!"
-                className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 transition-all flex items-center gap-1 whitespace-nowrap"
+                className="min-h-[30px] sm:min-h-0 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 transition-all flex items-center gap-1 whitespace-nowrap"
               >
                 <Fish className="w-3 h-3 text-cyan-500" />
                 <span>Ikan</span>
@@ -809,7 +894,7 @@ export function PetCatCompanion() {
                     return next;
                   });
                 }}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold transition-all flex items-center gap-1 whitespace-nowrap ${
+                className={`min-h-[30px] sm:min-h-0 px-2.5 py-1 rounded-full text-[10px] font-extrabold transition-all flex items-center gap-1 whitespace-nowrap ${
                   followCursor
                     ? 'bg-emerald-500 text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
@@ -830,6 +915,18 @@ export function PetCatCompanion() {
                   <RotateCcw className="w-3 h-3" />
                 </button>
               )}
+
+              {/* Close / Hide Si Oyen Button */}
+              <button
+                type="button"
+                onClick={hideOyen}
+                title="Tutup / Sembunyikan Si Oyen (bisa diaktifkan kembali kapan saja)"
+                aria-label="Tutup Si Oyen"
+                className="min-h-[30px] sm:min-h-0 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-300 transition-all flex items-center gap-1 whitespace-nowrap"
+              >
+                <X className="w-3 h-3" />
+                <span>Tutup</span>
+              </button>
             </motion.div>
             )}
             </AnimatePresence>
@@ -840,9 +937,9 @@ export function PetCatCompanion() {
                 sfx.catMeow();
                 setChatOpen((o) => !o);
               }}
-              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white text-xs font-extrabold shadow-lg hover:scale-105 active:scale-95 transition-transform flex items-center gap-1.5"
+              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white text-[11px] sm:text-xs font-extrabold shadow-lg hover:scale-105 active:scale-95 transition-transform flex items-center gap-1.5"
             >
-              <MessageCircleHeart className="w-4 h-4" />
+              <MessageCircleHeart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{chatOpen ? 'Tutup Oyen.AI' : 'Tanya Oyen.AI'}</span>
             </button>
           </div>
@@ -856,10 +953,24 @@ export function PetCatCompanion() {
             }}
             onDoubleClick={handlePetCat}
             title="Klik untuk buka menu Si Oyen • Klik 2x untuk elus 3D Si Oyen!"
-            className={`relative w-26 h-26 sm:w-28 sm:h-28 cursor-pointer group transition-transform duration-300 ${
-              isJumping ? '-translate-y-7 scale-105' : 'animate-oyen-bob'
+            className={`relative w-16 h-16 sm:w-28 sm:h-28 cursor-pointer group transition-transform duration-300 ${
+              isJumping ? '-translate-y-4 sm:-translate-y-7 scale-105' : 'animate-oyen-bob'
             }`}
           >
+            {/* Quick Corner Close Badge */}
+            <button
+              type="button"
+              onClick={hideOyen}
+              title="Sembunyikan Si Oyen"
+              aria-label="Sembunyikan Si Oyen"
+              className={`absolute -top-1 -right-1 z-20 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500 shadow flex items-center justify-center transition-opacity ${
+                isTouch && showTools
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+              }`}
+            >
+              <X className="w-3 h-3" />
+            </button>
             {/* Glowing Interactive Aura Behind Si Oyen (Pure Radial Gradient) */}
             <div
               className="absolute inset-0 rounded-full group-hover:scale-110 transition-transform duration-500 pointer-events-none"
@@ -1231,6 +1342,9 @@ export function PetCatCompanion() {
           </div>
         </div>
       </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

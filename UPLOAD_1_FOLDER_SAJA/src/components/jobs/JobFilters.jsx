@@ -16,6 +16,7 @@ import { spring } from '../../lib/constants';
 import { sfx } from '../../lib/soundEffects';
 import { buildJobStreetTypingPrompts, getSmartSuggestions } from '../../lib/smartSearch';
 import { formatRupiah } from '../../lib/format';
+import { MapButton } from './MapButton';
 
 const CITIES = [
   'Semua',
@@ -244,7 +245,7 @@ export function JobFilters({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder=""
-                className="relative z-10 bg-transparent text-sm sm:text-base font-medium text-slate-900 dark:text-white focus:outline-none w-full"
+                className="relative z-10 bg-transparent text-base font-medium text-slate-900 dark:text-white focus:outline-none w-full"
               />
 
               {/* JobStreet-Style Animated Typewriter Overlay when input is empty */}
@@ -394,11 +395,18 @@ export function JobFilters({
                       </p>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                         {suggestions.jobs.map((job) => (
-                          <button
+                          <div
                             key={job.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => handlePickJob(job)}
-                            className="w-full text-left flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all group overflow-hidden"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handlePickJob(job);
+                              }
+                            }}
+                            className="w-full text-left flex items-center justify-between gap-2.5 p-2.5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all group overflow-hidden cursor-pointer"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               <span className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-lg shrink-0">
@@ -416,13 +424,14 @@ export function JobFilters({
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <MapButton job={job} variant="mini" />
                               <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 whitespace-nowrap">
                                 Match {job.match?.score || 0}%
                               </span>
                               <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-brand-500" />
                             </div>
-                          </button>
+                          </div>
                         ))}
                       </div>
                     </div>

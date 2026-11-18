@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Rocket,
   Eye,
@@ -14,6 +14,7 @@ import { useToast } from '../context/ToastContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { spring } from '../lib/constants';
+import { BrandLogo } from '../components/ui/BrandLogo';
 
 export default function Auth() {
   const location = useLocation();
@@ -30,6 +31,11 @@ export default function Auth() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Setiap kali halaman Auth dipasang (misal setelah logout kembali ke /masuk), putar intro
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('mh-replay-intro'));
+  }, []);
 
   const switchMode = (targetPath) => {
     setErrorMsg('');
@@ -49,6 +55,7 @@ export default function Auth() {
     setLoading(true);
     try {
       await signIn({ email: 'demo@maganghub.id', password: 'demo12345' });
+      window.dispatchEvent(new CustomEvent('mh-replay-intro'));
       toast({
         type: 'success',
         title: 'Selamat datang kembali, Rizky! 👋',
@@ -96,6 +103,7 @@ export default function Auth() {
           title: 'Akun Berhasil Dibuat! 🎉',
           desc: 'Selamat datang di MagangHub. Yuk mulai lengkapi kesiapan magangmu!',
         });
+        window.dispatchEvent(new CustomEvent('mh-replay-intro'));
         navigate('/');
       } else {
         await signIn({
@@ -106,6 +114,7 @@ export default function Auth() {
           type: 'success',
           title: 'Berhasil Masuk!',
         });
+        window.dispatchEvent(new CustomEvent('mh-replay-intro'));
         navigate('/');
       }
     } catch (err) {
@@ -141,9 +150,7 @@ export default function Auth() {
         <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-300/20 blur-3xl animate-float-delayed" />
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg">
-            <Rocket className="w-6 h-6 text-white" />
-          </div>
+          <BrandLogo size="lg" />
           <span className="text-2xl font-display font-extrabold tracking-tight">
             MagangHub
           </span>
@@ -190,8 +197,18 @@ export default function Auth() {
       </div>
 
       {/* Right Auth Form Panel */}
-      <div className="col-span-1 lg:col-span-6 flex items-center justify-center p-6 sm:p-10">
+      <div className="col-span-1 lg:col-span-6 flex items-center justify-center p-4 sm:p-10 pt-14 sm:pt-10 relative">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('mh-replay-intro'))}
+          className="absolute top-3 right-3 sm:top-5 sm:right-5 z-20 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
+        >
+          ✨ Putar Ulang Intro
+        </button>
         <div className="w-full max-w-md space-y-5">
+          <div className="lg:hidden flex justify-center">
+            <BrandLogo size="lg" showText />
+          </div>
           {!isSupabaseConfigured && (
             <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-300 text-xs space-y-1">
               <div className="flex items-center gap-2 font-extrabold">

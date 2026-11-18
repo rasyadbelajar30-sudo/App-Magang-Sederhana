@@ -164,6 +164,7 @@ export default function InternPortal() {
           internship={internship}
           internId={intern_id}
           period={period}
+          hidePrintSheet={loaModalOpen}
           onPrintIdCard={() => window.print()}
           onPrintLoa={() => setLoaModalOpen(true)}
         />

@@ -18,6 +18,7 @@ import { STATUS_META } from '../../lib/constants';
 import { ProgressRing } from '../ui/ProgressRing';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Button } from '../ui/Button';
+import { MapButton } from './MapButton';
 import { sfx } from '../../lib/soundEffects';
 import { api } from '../../api/client';
 import { useApp } from '../../context/AppContext';
@@ -243,6 +244,7 @@ export function JobCard({
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
                   <MapPin className="w-3 h-3 text-brand-500" /> {job.city}
                 </span>
+                <MapButton job={job} variant="chip" label="Cari Alamat" />
                 <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25">
                   {job.education_target === 'Semua' ? 'SMK & Kuliah' : job.education_target}
                 </span>

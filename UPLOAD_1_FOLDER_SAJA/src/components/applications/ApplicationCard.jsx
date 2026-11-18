@@ -11,9 +11,15 @@ import {
   Award,
   XCircle,
   PartyPopper,
+  Sparkles,
+  Lightbulb,
+  CheckCircle2,
+  ExternalLink,
 } from 'lucide-react';
 import { STATUS_META } from '../../lib/constants';
 import { formatDateID } from '../../lib/format';
+import { getRealInternshipStandard } from '../../lib/realInternshipStandards';
+import { sfx } from '../../lib/soundEffects';
 import { fireCelebration } from '../../lib/confetti';
 import { GlassCard } from '../ui/GlassCard';
 import { Button } from '../ui/Button';
@@ -39,9 +45,63 @@ export function ApplicationCard({ application }) {
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [celebrationModalOpen, setCelebrationModalOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [aiReviewLoading, setAiReviewLoading] = useState(false);
+  const [aiReviewText, setAiReviewText] = useState('');
+  const [aiReviewModel, setAiReviewModel] = useState('');
 
   const internship = application.internship || {};
   const meta = STATUS_META[application.status] || STATUS_META.SUBMITTED;
+
+  const userSkillsLower = new Set(
+    (user?.skills || []).map((s) => String(s).toLowerCase())
+  );
+  const reqSkills = Array.isArray(internship.required_skills)
+    ? internship.required_skills
+    : [];
+  const matchedSkills = reqSkills.filter((s) =>
+    userSkillsLower.has(String(s).toLowerCase())
+  );
+  const missingSkills = reqSkills.filter(
+    (s) => !userSkillsLower.has(String(s).toLowerCase())
+  );
+  const coverLen = String(application.cover_letter || '').trim().length;
+  const answerLen = String(application.test_answer || '').trim().length;
+
+  const officialCareerSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+    `Karir Magang Internship Resmi ${internship.company_name || ''} ${internship.role_title || ''}`
+  )}`;
+  const realStd = getRealInternshipStandard(internship);
+
+  const handleRequestAiReview = async () => {
+    if (aiReviewLoading) return;
+    sfx.magicGenerate();
+    setAiReviewLoading(true);
+    try {
+      const res = await api.post('/ai/review-application', {
+        role_title: internship.role_title,
+        company_name: internship.company_name,
+        required_skills: reqSkills,
+        user_skills: user?.skills || [],
+        cover_letter: application.cover_letter || '',
+        test_answer: application.test_answer || '',
+        portfolio_url: user?.portfolio_url || '',
+        gpa_or_score: user?.gpa_or_score || '',
+        education_level: user?.education_level || 'Mahasiswa',
+        major: user?.major || '',
+      });
+      sfx.chatReceive();
+      setAiReviewText(res?.reply || '');
+      setAiReviewModel(res?.model || 'Google Gemma AI');
+    } catch (_err) {
+      toast({
+        type: 'error',
+        title: 'Gagal memuat bedah AI',
+        desc: 'Silakan coba klik kembali.',
+      });
+    } finally {
+      setAiReviewLoading(false);
+    }
+  };
 
   const handleAdvance = async (action, payload = {}) => {
     setLoadingAction(true);
@@ -158,6 +218,157 @@ export function ApplicationCard({ application }) {
             animate={{ opacity: 1 }}
             className="space-y-5 pt-2 border-t border-slate-200/80 dark:border-white/10"
           >
+            {/* Panel Bimbingan & Evaluasi Mentor Karir (AI Career Coach) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/[0.08] border border-amber-500/30 space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🐱</span>
+                  <h4 className="text-xs sm:text-sm font-display font-extrabold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Bedah Lamaran &amp; Bimbingan Oyen.AI (Sesuai Standar Magang Asli {internship.company_name})</span>
+                  </h4>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRequestAiReview}
+                    disabled={aiReviewLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-[11px] font-extrabold shadow hover:opacity-95 disabled:opacity-60 transition-opacity"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>
+                      {aiReviewLoading
+                        ? 'Google Gemma Sedang Membedah...'
+                        : aiReviewText
+                        ? '🔄 Bedah Ulang dengan Google Gemma AI'
+                        : '🤖 Minta Bedah Mendalam AI (Google Gemma)'}
+                    </span>
+                  </button>
+                  <a
+                    href={officialCareerSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-extrabold text-brand-600 dark:text-cyan-300 hover:border-brand-500 transition-colors"
+                  >
+                    <span>🌐 Info Rekrutmen Resmi</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* 2 Kolom Utama: (1) Kurang di Mana vs (2) Apa yang Harus Ada di Magang Asli */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="p-3.5 rounded-xl bg-white/85 dark:bg-slate-900/75 border border-rose-500/25 space-y-1.5">
+                  <p className="font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                    <span>📍 1. Kurang di Mana (Evaluasi Lamaranmu Saat Ini):</span>
+                  </p>
+                  <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1 leading-relaxed">
+                    <li>
+                      <strong>Kesenjangan Skill ({application.match_score}% Match):</strong>{' '}
+                      {missingSkills.length > 0
+                        ? `Belum ada skill wajib "${missingSkills.join(', ')}" di profil/CV-mu (baru cocok: ${matchedSkills.join(', ') || 'belum ada'}).`
+                        : `Semua skill inti (${matchedSkills.join(', ')}) sudah ada di profilmu!`}
+                    </li>
+                    <li>
+                      <strong>Isi Cover Letter ({coverLen} karakter):</strong>{' '}
+                      {coverLen < 180
+                        ? 'Masih terlalu singkat — belum menyebutkan contoh proyek/praktik nyata dan angka hasil kerja yang dicari HRD.'
+                        : 'Panjang surat sudah baik, pastikan menyertakan tautan bukti karya/portofolio.'}
+                    </li>
+                    {!user?.portfolio_url && (
+                      <li>
+                        <strong>Portofolio Belum Ada:</strong> Tautan GitHub/Figma/Drive karya di halaman Profil masih kosong.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white/85 dark:bg-slate-900/75 border border-emerald-500/25 space-y-1.5">
+                  <p className="font-extrabold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>2. Apa yang Harus Ada (Standar Magang Asli {internship.company_name}):</span>
+                  </p>
+                  {realStd && (
+                    <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1 leading-relaxed">
+                      <li>
+                        <strong>Syarat Akademik Asli:</strong> {realStd.academic}
+                      </li>
+                      <li>
+                        <strong>Tools Industri Wajib:</strong> {realStd.tools_and_tech.slice(0, 4).join(', ')}
+                      </li>
+                      <li>
+                        <strong>Bukti Portofolio Wajib:</strong> {realStd.portfolio_must_have[0]}
+                      </li>
+                      <li>
+                        <strong>Kata Kunci CV ATS:</strong>{' '}
+                        <span className="font-bold text-brand-600 dark:text-cyan-300">
+                          {realStd.cv_ats_keywords.join(' • ')}
+                        </span>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Hasil Bedah Mendalam Live dari Google Gemma AI */}
+              {aiReviewText && (
+                <div className="p-4 rounded-xl bg-white dark:bg-[#111827] border-2 border-amber-500/40 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Hasil Bedah Personal oleh {aiReviewModel}</span>
+                    </span>
+                  </div>
+                  <div className="text-slate-700 dark:text-slate-200 whitespace-pre-line leading-relaxed">
+                    {aiReviewText}
+                  </div>
+                </div>
+              )}
+
+              {application.status === 'DOC_REVIEW' && (
+                <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-amber-500/20 text-xs space-y-1.5">
+                  <p className="font-extrabold text-slate-900 dark:text-white">
+                    🎯 Bimbingan Persiapan Wawancara HRD {internship.company_name}:
+                  </p>
+                  <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
+                    <li>
+                      Siapkan perkenalan diri 60 detik yang menonjolkan keahlian{' '}
+                      <strong>{reqSkills.slice(0, 2).join(' & ') || 'utama'}</strong>.
+                    </li>
+                    <li>
+                      Gunakan metode <strong>STAR (Situation, Task, Action, Result)</strong> saat menceritakan tugas sekolah/kuliah yang pernah kamu selesaikan.
+                    </li>
+                    <li>
+                      Kamu bisa latihan tanya-jawab terlebih dahulu di menu <strong>Prep Studio → Flashcard Interview</strong> atau lewat chat <strong>Oyen.AI</strong>!
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {application.status === 'INTERVIEW_SCHEDULED' && (
+                <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-amber-500/20 text-xs space-y-1.5">
+                  <p className="font-extrabold text-slate-900 dark:text-white">
+                    💡 Panduan Menjawab Mini Case Study ({internship.role_title}):
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Saat menjawab studi kasus dari mentor <strong>{internship.mentor_name}</strong>, susun jawabanmu dalam 3 poin: <strong>(1) Analisis Masalah Utama</strong>, <strong>(2) Langkah Solusi Teknis menggunakan {reqSkills.slice(0, 2).join('/')}</strong>, dan <strong>(3) Dampak/Hasil yang Diharapkan</strong>.
+                  </p>
+                </div>
+              )}
+
+              {(application.status === 'OFFERING_SENT' ||
+                application.status === 'ACCEPTED_ONBOARDING') && (
+                <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-emerald-500/30 text-xs space-y-1.5">
+                  <p className="font-extrabold text-emerald-700 dark:text-emerald-300">
+                    🏆 Rapor Evaluasi Akhir Simulasi ({answerLen} karakter jawaban studi kasus):
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Kamu telah menyelesaikan seluruh tahapan simulasi seleksi untuk posisi <strong>{internship.role_title}</strong>! Sekarang kamu sudah punya <strong>CV ATS-Friendly</strong>, <strong>Surat Pengantar</strong>, dan pengalaman menjawab studi kasus yang siap dipakai mendaftar di dunia nyata.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Contextual Action Panel based on current status */}
             {application.status === 'SUBMITTED' && (
               <div className="p-5 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

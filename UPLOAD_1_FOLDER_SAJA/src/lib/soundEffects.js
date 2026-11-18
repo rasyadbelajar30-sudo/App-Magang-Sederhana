@@ -871,6 +871,172 @@ export const sfx = {
     });
   },
 
+  // 35. Intro Splash: Cosmic Sub-Whoosh + 5-Note Crystal Startup Fanfare + Star Shimmer
+  introSplash() {
+    try {
+      const ctx = getCtx();
+      if (!ctx) return;
+
+      const fireIntro = () => {
+        lastGlobalSoundAt = Date.now();
+        // Warm cosmic sub-bass swell
+        playTone(ctx, {
+          type: 'sine',
+          freqStart: 110,
+          freqMid: 196,
+          freqEnd: 261.63,
+          startTime: 0,
+          duration: 0.55,
+          gainPeak: 0.14,
+        });
+        // Orbital air whoosh
+        playFilteredNoise(ctx, {
+          filterType: 'bandpass',
+          freqStart: 280,
+          freqEnd: 2600,
+          q: 1.4,
+          startTime: 0,
+          duration: 0.42,
+          gainPeak: 0.08,
+        });
+        // Ascending 5-note crystal arpeggio (C5 - E5 - G5 - B5 - C6)
+        [523.25, 659.25, 783.99, 987.77, 1046.5].forEach((f, i) => {
+          playTone(ctx, {
+            type: 'sine',
+            freqStart: f,
+            startTime: 0.06 + i * 0.085,
+            duration: 0.52,
+            gainPeak: 0.14,
+          });
+          playTone(ctx, {
+            type: 'triangle',
+            freqStart: f * 2,
+            startTime: 0.06 + i * 0.085,
+            duration: 0.28,
+            gainPeak: 0.045,
+          });
+        });
+        // Starlight high shimmer
+        playFilteredNoise(ctx, {
+          filterType: 'highpass',
+          freqStart: 4800,
+          freqEnd: 9200,
+          q: 0.8,
+          startTime: 0.38,
+          duration: 0.35,
+          gainPeak: 0.045,
+        });
+      };
+
+      if (ctx.state === 'running') {
+        fireIntro();
+      } else {
+        ctx
+          .resume()
+          .then(() => {
+            if (ctx.state === 'running') fireIntro();
+          })
+          .catch(() => {});
+
+        const unlockOnce = () => {
+          window.removeEventListener('pointerdown', unlockOnce, true);
+          window.removeEventListener('keydown', unlockOnce, true);
+          ctx
+            .resume()
+            .then(() => fireIntro())
+            .catch(() => {});
+        };
+        window.addEventListener('pointerdown', unlockOnce, { once: true, capture: true });
+        window.addEventListener('keydown', unlockOnce, { once: true, capture: true });
+      }
+    } catch (_e) {
+      // ignore
+    }
+  },
+
+  // 35b. Intro Warp Progress Step: Sci-Fi Telemetry Charge Ping
+  introStep(step = 1) {
+    try {
+      const ctx = getCtx();
+      if (!ctx || ctx.state !== 'running') return;
+      lastGlobalSoundAt = Date.now();
+      const baseFreq = step === 1 ? 587.33 : step === 2 ? 783.99 : 1046.5;
+      playTone(ctx, {
+        type: 'sine',
+        freqStart: baseFreq,
+        freqEnd: baseFreq * 1.25,
+        duration: 0.14,
+        gainPeak: 0.11,
+      });
+      playTone(ctx, {
+        type: 'triangle',
+        freqStart: baseFreq * 1.5,
+        startTime: 0.05,
+        duration: 0.12,
+        gainPeak: 0.06,
+      });
+    } catch (_e) {
+      // ignore
+    }
+  },
+
+  // 35c. Intro Launch Curtain Reveal: Warp Whoosh + Triumphant Chord
+  introLaunch() {
+    try {
+      const ctx = getCtx();
+      if (!ctx || ctx.state !== 'running') return;
+      lastGlobalSoundAt = Date.now();
+      playFilteredNoise(ctx, {
+        filterType: 'bandpass',
+        freqStart: 400,
+        freqEnd: 3800,
+        q: 1.5,
+        duration: 0.28,
+        gainPeak: 0.09,
+      });
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+        playTone(ctx, {
+          type: 'sine',
+          freqStart: f,
+          startTime: idx * 0.025,
+          duration: 0.38,
+          gainPeak: 0.09,
+        });
+      });
+    } catch (_e) {
+      // ignore
+    }
+  },
+
+  // 36. Open Map: Sonar double ping + whoosh
+  openMap() {
+    const ctx = getCtx();
+    if (!ctx) return;
+    lastGlobalSoundAt = Date.now();
+    playTone(ctx, { type: 'sine', freqStart: 1046, duration: 0.12, gainPeak: 0.1 });
+    playTone(ctx, { type: 'sine', freqStart: 1318, startTime: 0.07, duration: 0.16, gainPeak: 0.1 });
+    playFilteredNoise(ctx, { freqStart: 400, freqEnd: 2200, q: 1.2, startTime: 0.05, duration: 0.12, gainPeak: 0.05 });
+  },
+
+  // 37. Hide Oyen: Soft descending glide + pop
+  oyenHide() {
+    const ctx = getCtx();
+    if (!ctx) return;
+    lastGlobalSoundAt = Date.now();
+    playTone(ctx, { type: 'sine', freqStart: 880, freqEnd: 330, duration: 0.22, gainPeak: 0.1 });
+    playTone(ctx, { type: 'triangle', freqStart: 220, freqEnd: 140, startTime: 0.18, duration: 0.06, gainPeak: 0.08 });
+  },
+
+  // 38. Show Oyen: Two rising notes + short meow
+  oyenShow() {
+    const ctx = getCtx();
+    if (!ctx) return;
+    lastGlobalSoundAt = Date.now();
+    playTone(ctx, { type: 'sine', freqStart: 523, duration: 0.09, gainPeak: 0.1 });
+    playTone(ctx, { type: 'sine', freqStart: 784, startTime: 0.08, duration: 0.12, gainPeak: 0.1 });
+    setTimeout(() => this.catMeow(), 160);
+  },
+
   // Global Delegated Click Listener: Deferred 5ms so specific component onClick sounds fire first,
   // while 100% guaranteeing every single clickable element in the app produces a realistic sound!
   handleGlobalInteraction(e) {

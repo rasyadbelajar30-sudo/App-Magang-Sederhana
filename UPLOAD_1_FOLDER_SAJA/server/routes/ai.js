@@ -426,4 +426,82 @@ router.post('/chat', optionalAuth, async (req, res) => {
   }
 });
 
+// POST /api/ai/review-application — Bedah Mendalam Lamaran oleh Google Gemma AI
+router.post('/review-application', optionalAuth, async (req, res) => {
+  try {
+    const {
+      role_title = 'Magang',
+      company_name = 'Perusahaan Mitra',
+      required_skills = [],
+      user_skills = [],
+      cover_letter = '',
+      test_answer = '',
+      portfolio_url = '',
+      gpa_or_score = '',
+      education_level = 'Mahasiswa',
+      major = '',
+    } = req.body || {};
+
+    const reqList = Array.isArray(required_skills) ? required_skills : [];
+    const uList = Array.isArray(user_skills) ? user_skills : [];
+    const uLower = new Set(uList.map((s) => String(s).toLowerCase()));
+    const missing = reqList.filter((s) => !uLower.has(String(s).toLowerCase()));
+    const matched = reqList.filter((s) => uLower.has(String(s).toLowerCase()));
+
+    const reviewSystemPrompt =
+      'Kamu adalah Senior Technical Recruiter & AI Career Coach (Oyen.AI) di MagangHub. Tugasmu adalah membedah lamaran magang siswa/mahasiswa secara jujur, konstruktif, dan akurat sesuai standar rekrutmen magang asli di perusahaan Indonesia. Gunakan format poin singkat dengan subjudul tebal (**1. Kurang di Mana**, **2. Apa yang Harus Ada di CV & Portofolio**, **3. Contoh Kalimat Perbaikan**).';
+
+    const reviewUserPrompt = `Bedahlah lamaran untuk posisi **${role_title}** di **${company_name}**:
+- Profil Pelamar: ${education_level} jurusan ${major || 'terkait'}, Nilai/IPK: ${gpa_or_score || 'belum diisi'}, Portofolio: ${portfolio_url ? 'Ada' : 'Belum dicantumkan'}
+- Skill Wajib Lowongan Asli: ${reqList.join(', ') || '-'}
+- Skill Pelamar yang Sudah Cocok: ${matched.join(', ') || 'Belum ada'}
+- Skill Wajib yang Masih Kurang: ${missing.join(', ') || 'Tidak ada (semua terpenuhi)'}
+- Isi Cover Letter Pelamar (${String(cover_letter).length} karakter): "${String(cover_letter).slice(0, 350)}"
+${test_answer ? `- Jawaban Studi Kasus Pelamar: "${String(test_answer).slice(0, 260)}"` : ''}
+
+Berikan evaluasi konkret dan spesifik untuk posisi ${role_title} di ${company_name}!`;
+
+    const primaryNode = GEMMA4_OPENAI_NODES[roundRobinCounter % GEMMA4_OPENAI_NODES.length];
+    const g3Node = GEMMA3_GRADIO_NODES[roundRobinCounter % GEMMA3_GRADIO_NODES.length];
+    roundRobinCounter += 1;
+
+    const messages = [
+      { role: 'system', content: reviewSystemPrompt },
+      { role: 'user', content: reviewUserPrompt },
+    ];
+
+    const raceAbort = new AbortController();
+    let winner = null;
+    try {
+      winner = await Promise.any([
+        callGemma3GradioNode(g3Node, reviewUserPrompt, reviewSystemPrompt, raceAbort.signal, 19000),
+        callPollinationsNode(messages, raceAbort.signal, 16000),
+        callGemma4OpenAINode(primaryNode, messages, raceAbort.signal, 22000),
+      ]);
+    } catch (_e) {
+      winner = null;
+    } finally {
+      raceAbort.abort();
+    }
+
+    if (winner && winner.reply) {
+      return res.json({
+        reply: winner.reply,
+        model: winner.model,
+      });
+    }
+
+    return res.json({
+      reply: `**1. Kurang di Mana:**\n${
+        missing.length > 0
+          ? `- Kamu belum mencantumkan keahlian wajib **${missing.join(', ')}** yang menjadi syarat utama screening ATS di **${company_name}**.`
+          : `- Seluruh skill wajib (**${matched.join(', ')}**) sudah tercantum, namun Cover Letter perlu mencantumkan metrik atau hasil proyek nyata.`
+      }\n${!portfolio_url ? '- Tautan portofolio/karya belum terisi di profil.' : ''}\n\n**2. Apa yang Harus Ada di Magang Asli ${company_name}:**\n- Bukti proyek/praktik menggunakan **${reqList.slice(0, 3).join(', ')}**.\n- Deskripsi kontribusi terukur di CV (misal: membuat proyek, meningkatkan efisiensi, atau hasil tugas praktik).\n\n**3. Contoh Kalimat Perbaikan Cover Letter:**\n- *"Saya telah mempraktikkan ${reqList.slice(0, 2).join(' dan ')} dalam proyek akademik/praktik serta siap berkontribusi langsung pada tim ${role_title} di ${company_name}."*`,
+      model: 'Google Gemma AI Coach',
+    });
+  } catch (_err) {
+    return res.status(500).json({ error: 'AI_REVIEW_FAILED' });
+  }
+});
+
 module.exports = router;
