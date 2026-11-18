@@ -271,28 +271,29 @@ export function IntroSplash({ onFinish }) {
   };
 
   useEffect(() => {
-    // 1. Beat 0.0s: Cosmic Logo & Jetpack Takeoff Fanfare
+    // 1. Beat 0.0s: Cosmic Logo & Dual Turbo Jetpack Takeoff Fanfare
     sfx.introSplash();
 
-    // 2. Beat 0.4s: Si Oyen Equips All 3D Gear & Flies In
+    // 2. Beat 0.42s: Si Oyen Equips All 3D Gear + 3D Flyby Sonic Whoosh
     const p1 = setTimeout(() => {
       setProgress(45);
       sfx.equipAccessory();
+      sfx.introFlybyWhoosh();
     }, 420);
 
-    // 3. Beat 0.9s: Si Oyen Mid-Air Wave & Cheerful Meow
+    // 3. Beat 0.9s: Si Oyen Mid-Air Wave, Cheerful Meow & Cyber Sparkles
     const oyenGreetingTimer = setTimeout(() => {
-      sfx.catMeow();
+      sfx.introOyenGreeting();
     }, 900);
 
-    // 4. Beat 1.5s: Warp Step 2 ("Menyiapkan 22+ Mitra Industri & Oyen.AI...")
+    // 4. Beat 1.5s: Warp Step 2 ("Menyiapkan 22+ Mitra Industri & Oyen.AI...") - Turbine Power Charge
     const p2 = setTimeout(() => {
       setStepIdx(1);
       setProgress(78);
       sfx.introStep(2);
     }, 1500);
 
-    // 5. Beat 2.5s: Warp Step 3 ("Kecepatan Penuh — Siap Meluncur! 🚀")
+    // 5. Beat 2.5s: Warp Step 3 ("Kecepatan Penuh — Siap Meluncur! 🚀") - Maximum Warp Lock
     const p3 = setTimeout(() => {
       setStepIdx(2);
       setProgress(100);
@@ -306,7 +307,7 @@ export function IntroSplash({ onFinish }) {
     }, 3450);
 
     const handleKey = (e) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
         sfx.introLaunch();
         triggerClose();
       }
@@ -447,6 +448,23 @@ export function IntroSplash({ onFinish }) {
             <span>{STATUS_STEPS[stepIdx]}</span>
           </p>
         </div>
+      </div>
+
+      {/* Top Controls: Audio Status & Volume Boost Pill */}
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-20 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            sfx.unlockAudio();
+            sfx.introSplash();
+          }}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95"
+          title="Klik untuk mengaktifkan audio 3D & efek suara penuh"
+        >
+          <span className="animate-bounce">🔊</span>
+          <span>Audio 3D &amp; SFX Si Oyen</span>
+        </button>
       </div>
 
       {/* Skip / Enter Now Button */}

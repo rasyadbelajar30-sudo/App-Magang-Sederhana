@@ -889,7 +889,7 @@ export const sfx = {
     } catch (_e) {}
   },
 
-  // 35. Intro Splash: Cosmic Sub-Whoosh + 5-Note Crystal Startup Fanfare + Star Shimmer
+  // 35. Intro Splash: Epic Cinematic Fanfare + Dual Turbo Jetpack Ignition
   introSplash() {
     try {
       const ctx = getCtx();
@@ -897,55 +897,95 @@ export const sfx = {
       const startedAt = Date.now();
 
       const fireIntro = () => {
-        // Guard: Jika lebih dari 900ms sejak intro jalan, jangan mainkan suara pembuka terlambat!
-        if (Date.now() - startedAt > 900) return;
+        if (Date.now() - startedAt > 1400) return;
         lastGlobalSoundAt = Date.now();
-        // Warm cosmic sub-bass swell
+
+        // 1. Heavy Sub-Bass Theater Impact (Cinema Sub-Boom)
         playTone(ctx, {
           type: 'sine',
-          freqStart: 110,
-          freqMid: 196,
-          freqEnd: 261.63,
+          freqStart: 95,
+          freqMid: 55,
+          freqEnd: 30,
           startTime: 0,
-          duration: 0.55,
-          gainPeak: 0.14,
+          duration: 1.1,
+          gainPeak: 0.36,
         });
-        // Orbital air whoosh
+        playTone(ctx, {
+          type: 'triangle',
+          freqStart: 180,
+          freqEnd: 60,
+          startTime: 0,
+          duration: 0.75,
+          gainPeak: 0.22,
+        });
+
+        // 2. Dual Turbo Jetpack Thruster Ignite & Roar
         playFilteredNoise(ctx, {
           filterType: 'bandpass',
-          freqStart: 280,
-          freqEnd: 2600,
-          q: 1.4,
+          freqStart: 160,
+          freqEnd: 2200,
+          q: 1.8,
           startTime: 0,
-          duration: 0.42,
-          gainPeak: 0.08,
+          duration: 0.95,
+          gainPeak: 0.22,
         });
-        // Ascending 5-note crystal arpeggio (C5 - E5 - G5 - B5 - C6)
-        [523.25, 659.25, 783.99, 987.77, 1046.5].forEach((f, i) => {
+        playFilteredNoise(ctx, {
+          filterType: 'lowpass',
+          freqStart: 320,
+          freqEnd: 880,
+          q: 2.2,
+          startTime: 0.08,
+          duration: 1.1,
+          gainPeak: 0.2,
+        });
+
+        // 3. Heroic 6-Note Orchestral Brass/Synth Chord (D-Major Victory Swell)
+        const chordNotes = [146.83, 220.0, 293.66, 369.99, 440.0, 587.33];
+        chordNotes.forEach((freq, i) => {
+          playTone(ctx, {
+            type: 'sawtooth',
+            freqStart: freq * 0.99,
+            freqEnd: freq,
+            startTime: 0.08 + i * 0.04,
+            duration: 1.2 - i * 0.08,
+            gainPeak: 0.065,
+          });
+          playTone(ctx, {
+            type: 'sine',
+            freqStart: freq,
+            startTime: 0.08 + i * 0.04,
+            duration: 1.4 - i * 0.08,
+            gainPeak: 0.15,
+          });
+        });
+
+        // 4. Starlight Crystal Cascade Arpeggio (8 Sparkling Notes)
+        [587.33, 739.99, 880.0, 1174.66, 1479.98, 1760.0, 2349.32, 2959.96].forEach((f, idx) => {
           playTone(ctx, {
             type: 'sine',
             freqStart: f,
-            startTime: 0.06 + i * 0.085,
-            duration: 0.52,
-            gainPeak: 0.14,
+            startTime: 0.15 + idx * 0.075,
+            duration: 0.45,
+            gainPeak: 0.16,
           });
           playTone(ctx, {
             type: 'triangle',
-            freqStart: f * 2,
-            startTime: 0.06 + i * 0.085,
-            duration: 0.28,
-            gainPeak: 0.045,
+            freqStart: f * 1.5,
+            startTime: 0.15 + idx * 0.075,
+            duration: 0.22,
+            gainPeak: 0.05,
           });
         });
-        // Starlight high shimmer
+
+        // 5. High Stardust Shimmer Burst
         playFilteredNoise(ctx, {
           filterType: 'highpass',
-          freqStart: 4800,
-          freqEnd: 9200,
-          q: 0.8,
-          startTime: 0.38,
-          duration: 0.35,
-          gainPeak: 0.045,
+          freqStart: 5500,
+          freqEnd: 11000,
+          q: 1.2,
+          startTime: 0.45,
+          duration: 0.55,
+          gainPeak: 0.1,
         });
       };
 
@@ -955,7 +995,7 @@ export const sfx = {
         ctx
           .resume()
           .then(() => {
-            if (ctx.state === 'running' && Date.now() - startedAt <= 900) fireIntro();
+            if (ctx.state === 'running' && Date.now() - startedAt <= 1400) fireIntro();
           })
           .catch(() => {});
 
@@ -966,7 +1006,7 @@ export const sfx = {
           ctx
             .resume()
             .then(() => {
-              if (Date.now() - startedAt <= 900) {
+              if (Date.now() - startedAt <= 1400) {
                 fireIntro();
               }
             })
@@ -981,58 +1021,189 @@ export const sfx = {
     }
   },
 
-  // 35b. Intro Warp Progress Step: Sci-Fi Telemetry Charge Ping
+  // 35b. Intro Warp Progress Step: Sci-Fi Telemetry Charging Turbine
   introStep(step = 1) {
     try {
       const ctx = getCtx();
       if (!ctx || ctx.state !== 'running') return;
       lastGlobalSoundAt = Date.now();
-      const baseFreq = step === 1 ? 587.33 : step === 2 ? 783.99 : 1046.5;
+
+      // Plasma Turbine Charge Sweep
+      const startF = step === 1 ? 260 : step === 2 ? 440 : 660;
+      const endF = step === 1 ? 680 : step === 2 ? 1100 : 1760;
       playTone(ctx, {
         type: 'sine',
-        freqStart: baseFreq,
-        freqEnd: baseFreq * 1.25,
-        duration: 0.14,
-        gainPeak: 0.11,
+        freqStart: startF,
+        freqEnd: endF,
+        duration: 0.28,
+        gainPeak: 0.22,
       });
       playTone(ctx, {
         type: 'triangle',
-        freqStart: baseFreq * 1.5,
-        startTime: 0.05,
-        duration: 0.12,
-        gainPeak: 0.06,
+        freqStart: startF * 1.5,
+        freqEnd: endF * 1.5,
+        startTime: 0.04,
+        duration: 0.24,
+        gainPeak: 0.12,
+      });
+
+      // Jetpack Thruster Burst Whoosh
+      playFilteredNoise(ctx, {
+        filterType: 'bandpass',
+        freqStart: 300 + step * 250,
+        freqEnd: 1800 + step * 600,
+        q: 2.0,
+        duration: 0.32,
+        gainPeak: 0.16,
+      });
+
+      // High-Tech Digital Lock-On Chimes (Major triad)
+      const triad =
+        step === 1
+          ? [523.25, 659.25, 783.99]
+          : step === 2
+          ? [659.25, 830.61, 987.77]
+          : [783.99, 987.77, 1174.66, 1567.98];
+      triad.forEach((freq, i) => {
+        playTone(ctx, {
+          type: 'sine',
+          freqStart: freq,
+          startTime: 0.1 + i * 0.045,
+          duration: 0.35,
+          gainPeak: 0.18,
+        });
       });
     } catch (_e) {
       // ignore
     }
   },
 
-  // 35c. Intro Launch Curtain Reveal: Warp Whoosh + Triumphant Chord
+  // 35c. Intro Launch Curtain Reveal: Massive Hyperdrive Warp Boom + Heroic Fanfare
   introLaunch() {
+    try {
+      const ctx = getCtx();
+      if (!ctx || ctx.state !== 'running') return;
+      lastGlobalSoundAt = Date.now();
+
+      // 1. Massive Sub-Bass Sonic Boom
+      playTone(ctx, {
+        type: 'sine',
+        freqStart: 130,
+        freqMid: 60,
+        freqEnd: 24,
+        duration: 0.95,
+        gainPeak: 0.42,
+      });
+      playTone(ctx, {
+        type: 'triangle',
+        freqStart: 260,
+        freqEnd: 48,
+        duration: 0.65,
+        gainPeak: 0.25,
+      });
+
+      // 2. High-Speed Hyperspace Sonic Tear (Whooosh!)
+      playFilteredNoise(ctx, {
+        filterType: 'bandpass',
+        freqStart: 350,
+        freqEnd: 5200,
+        q: 1.4,
+        duration: 0.65,
+        gainPeak: 0.28,
+      });
+      playFilteredNoise(ctx, {
+        filterType: 'highpass',
+        freqStart: 3200,
+        freqEnd: 9500,
+        q: 1.0,
+        startTime: 0.1,
+        duration: 0.55,
+        gainPeak: 0.16,
+      });
+
+      // 3. Grand Triumphant Victory Chords (Heroic fanfare: C5, E5, G5, B5, C6, E6)
+      const fanfareNotes = [523.25, 659.25, 783.99, 987.77, 1046.5, 1318.51];
+      fanfareNotes.forEach((f, idx) => {
+        playTone(ctx, {
+          type: 'sine',
+          freqStart: f,
+          startTime: 0.05 + idx * 0.04,
+          duration: 0.85,
+          gainPeak: 0.2,
+        });
+        playTone(ctx, {
+          type: 'triangle',
+          freqStart: f * 1.5,
+          startTime: 0.05 + idx * 0.04,
+          duration: 0.45,
+          gainPeak: 0.07,
+        });
+      });
+    } catch (_e) {
+      // ignore
+    }
+  },
+
+  // 35d. Flyby 3D Orbiting Whoosh (When Si Oyen passes in front of the giant logo)
+  introFlybyWhoosh() {
     try {
       const ctx = getCtx();
       if (!ctx || ctx.state !== 'running') return;
       lastGlobalSoundAt = Date.now();
       playFilteredNoise(ctx, {
         filterType: 'bandpass',
-        freqStart: 400,
-        freqEnd: 3800,
+        freqStart: 220,
+        freqEnd: 2800,
         q: 1.5,
-        duration: 0.28,
-        gainPeak: 0.09,
+        duration: 0.48,
+        gainPeak: 0.2,
       });
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+      playTone(ctx, {
+        type: 'sine',
+        freqStart: 330,
+        freqMid: 660,
+        freqEnd: 440,
+        duration: 0.38,
+        gainPeak: 0.12,
+      });
+    } catch (_e) {}
+  },
+
+  // 35e. Si Oyen Heroic Meow + Cyber Sparkle
+  introOyenGreeting() {
+    try {
+      const ctx = getCtx();
+      if (!ctx || ctx.state !== 'running') return;
+      lastGlobalSoundAt = Date.now();
+      // Cute enthusiastic Meow (two-tone pitch glide)
+      playTone(ctx, {
+        type: 'triangle',
+        freqStart: 580,
+        freqMid: 1080,
+        freqEnd: 640,
+        duration: 0.38,
+        gainPeak: 0.24,
+      });
+      playTone(ctx, {
+        type: 'sine',
+        freqStart: 1160,
+        freqMid: 2160,
+        freqEnd: 1280,
+        startTime: 0.02,
+        duration: 0.38,
+        gainPeak: 0.12,
+      });
+      // Cyber sparkle chime undertone
+      [1046.5, 1318.51, 1567.98].forEach((f, i) => {
         playTone(ctx, {
           type: 'sine',
           freqStart: f,
-          startTime: idx * 0.025,
-          duration: 0.38,
-          gainPeak: 0.09,
+          startTime: 0.18 + i * 0.06,
+          duration: 0.28,
+          gainPeak: 0.14,
         });
       });
-    } catch (_e) {
-      // ignore
-    }
+    } catch (_e) {}
   },
 
   // 36. Open Map: Sonar double ping + whoosh
