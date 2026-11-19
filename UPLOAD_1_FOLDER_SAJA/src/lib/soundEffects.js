@@ -54,7 +54,6 @@ function playTone(
 ) {
   if (ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
-    if (ctx.state !== 'running') return;
   }
   const now = ctx.currentTime + startTime;
   const osc = ctx.createOscillator();
@@ -101,7 +100,6 @@ function playFilteredNoise(
 ) {
   if (ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
-    if (ctx.state !== 'running') return;
   }
   const now = ctx.currentTime + startTime;
   const source = ctx.createBufferSource();
@@ -989,32 +987,17 @@ export const sfx = {
         });
       };
 
-      if (ctx.state === 'running') {
-        fireIntro();
-      } else {
-        ctx
-          .resume()
-          .then(() => {
-            if (ctx.state === 'running' && Date.now() - startedAt <= 1400) fireIntro();
-          })
-          .catch(() => {});
+      fireIntro();
 
-        const unlockOnce = () => {
-          window.removeEventListener('pointerdown', unlockOnce, true);
-          window.removeEventListener('keydown', unlockOnce, true);
-          window.removeEventListener('touchstart', unlockOnce, true);
-          ctx
-            .resume()
-            .then(() => {
-              if (Date.now() - startedAt <= 1400) {
-                fireIntro();
-              }
-            })
-            .catch(() => {});
+      if (ctx.state !== 'running') {
+        ctx.resume().catch(() => {});
+        const autoUnlock = () => {
+          ctx.resume().catch(() => {});
         };
-        window.addEventListener('pointerdown', unlockOnce, { once: true, capture: true });
-        window.addEventListener('keydown', unlockOnce, { once: true, capture: true });
-        window.addEventListener('touchstart', unlockOnce, { once: true, capture: true });
+        window.addEventListener('pointerdown', autoUnlock, { once: true, passive: true });
+        window.addEventListener('pointermove', autoUnlock, { once: true, passive: true });
+        window.addEventListener('touchstart', autoUnlock, { once: true, passive: true });
+        window.addEventListener('keydown', autoUnlock, { once: true, passive: true });
       }
     } catch (_e) {
       // ignore
@@ -1025,7 +1008,10 @@ export const sfx = {
   introStep(step = 1) {
     try {
       const ctx = getCtx();
-      if (!ctx || ctx.state !== 'running') return;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       lastGlobalSoundAt = Date.now();
 
       // Plasma Turbine Charge Sweep
@@ -1082,7 +1068,10 @@ export const sfx = {
   introLaunch() {
     try {
       const ctx = getCtx();
-      if (!ctx || ctx.state !== 'running') return;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       lastGlobalSoundAt = Date.now();
 
       // 1. Massive Sub-Bass Sonic Boom
@@ -1148,7 +1137,10 @@ export const sfx = {
   introFlybyWhoosh() {
     try {
       const ctx = getCtx();
-      if (!ctx || ctx.state !== 'running') return;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       lastGlobalSoundAt = Date.now();
       playFilteredNoise(ctx, {
         filterType: 'bandpass',
@@ -1173,7 +1165,10 @@ export const sfx = {
   introOyenGreeting() {
     try {
       const ctx = getCtx();
-      if (!ctx || ctx.state !== 'running') return;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       lastGlobalSoundAt = Date.now();
       // Cute enthusiastic Meow (two-tone pitch glide)
       playTone(ctx, {

@@ -271,8 +271,18 @@ export function IntroSplash({ onFinish }) {
   };
 
   useEffect(() => {
+    // 0. Auto-unlock & start epic audio immediately
+    sfx.unlockAudio();
+
     // 1. Beat 0.0s: Cosmic Logo & Dual Turbo Jetpack Takeoff Fanfare
     sfx.introSplash();
+
+    // Passive motion unlock: any mouse move, pointer or touch wakes up Web Audio with zero clicks
+    const motionUnlock = () => sfx.unlockAudio();
+    window.addEventListener('pointermove', motionUnlock, { once: true, passive: true });
+    window.addEventListener('mousemove', motionUnlock, { once: true, passive: true });
+    window.addEventListener('touchstart', motionUnlock, { once: true, passive: true });
+    window.addEventListener('scroll', motionUnlock, { once: true, passive: true });
 
     // 2. Beat 0.42s: Si Oyen Equips All 3D Gear + 3D Flyby Sonic Whoosh
     const p1 = setTimeout(() => {
@@ -321,6 +331,10 @@ export function IntroSplash({ onFinish }) {
       clearTimeout(p3);
       clearTimeout(launchSfxTimer);
       window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('pointermove', motionUnlock);
+      window.removeEventListener('mousemove', motionUnlock);
+      window.removeEventListener('touchstart', motionUnlock);
+      window.removeEventListener('scroll', motionUnlock);
     };
   }, []);
 
@@ -448,23 +462,6 @@ export function IntroSplash({ onFinish }) {
             <span>{STATUS_STEPS[stepIdx]}</span>
           </p>
         </div>
-      </div>
-
-      {/* Top Controls: Audio Status & Volume Boost Pill */}
-      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-20 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            sfx.unlockAudio();
-            sfx.introSplash();
-          }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95"
-          title="Klik untuk mengaktifkan audio 3D & efek suara penuh"
-        >
-          <span className="animate-bounce">🔊</span>
-          <span>Audio 3D &amp; SFX Si Oyen</span>
-        </button>
       </div>
 
       {/* Skip / Enter Now Button */}
